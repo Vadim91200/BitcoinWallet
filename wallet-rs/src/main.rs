@@ -1,33 +1,30 @@
 use rand::prelude::*;
 use bip39::Language;
+use sha2::{Digest, Sha256};
 
 fn main() {
-    let pass_key = generate_key();
-    println!("{pass_key:?}");
+    let pass_key = generate_seed();
+    let seed = seed_from_words(pass_key);
+    println!("{seed}");
 }
 
-
-fn generate_key() -> Vec<&'static  str>{
+fn generate_seed() -> Vec<&'static str> {
     let mut rng = rand::thread_rng();
-    let random_bytes: [u8; 16] = rng.gen();
-
-    let hex_string: String = random_bytes
-        .iter()
-        .map(|byte| format!("{:02X}", byte))
-        .collect();
-    println!("{hex_string:?}");
-
-    // Convertir la seed en binaire
+    let seed: u128 = rng.gen();
+    println!("{seed}");
+    let seed_bytes = seed.to_be_bytes();
+    let mut hasher = Sha256::new();
+    hasher.update(&seed_bytes);
+    let result = hasher.finalize();
+    let result_bytes: [u8; 32] = result.into();
+    let four_most_significant_bits = result_bytes[0] >> 4;
+    
     let mut binary_seed = Vec::new();
-    for byte in &random_bytes {
-        let mut mask = 0b10000000;
-        for _ in 0..8 {
-            let bit = if byte & mask != 0 { 1 } else { 0 };
-            binary_seed.push(bit);
-            mask >>= 1;
-        }
+    for i in (0..128).rev() {
+        let bit = (seed >> i) & 1;
+        binary_seed.push(bit as u8);
     }
-    // Découper la seed en lots de 11 bits
+
     let mut eleven_bit_chunks = Vec::new();
     let mut chunk = 0u16;
     let mut count = 0;
@@ -40,9 +37,7 @@ fn generate_key() -> Vec<&'static  str>{
             count = 0;
         }
     }
-    eleven_bit_chunks.push(chunk);
-
-    // Afficher les mots correspondants à chaque index dans eleven_bit_chunks
+    eleven_bit_chunks.push((chunk << 4) | four_most_significant_bits as u16);
     let language = Language::English;
     let word_list = language.word_list();
 
@@ -54,17 +49,34 @@ fn generate_key() -> Vec<&'static  str>{
     pass_key
 }
 
-fn import_key(pass_key: Vec<&str>) -> String {
-    let mut rng = rand::thread_rng();
-    let random_bytes: [u8; 16] = rng.gen();
+fn seed_from_words(words: Vec<&str>) -> u128 {
+    let language = Language::English;
+    let mut eleven_bit_chunks = Vec::new();
+    for word in words {
+        eleven_bit_chunks.push(language.find_word(word).unwrap());
+    }
 
+    eleven_bit_chunks[11] = eleven_bit_chunks[11]  >> 4;
 
-    let hex_string: String = random_bytes
-        .iter()
-        .map(|byte| format!("{:02X}", byte))
-        .collect();
+    let mut binary_seed = Vec::new();
+    let last_one = eleven_bit_chunks.pop().unwrap();
+    let mask: u16 = 1;
+    for i in 0..7 {
+        let bit = if last_one & (mask << i ) != 0 { 1 } else { 0 };
+        binary_seed.push(bit);
+    }
+    for chunks in eleven_bit_chunks.iter().rev() {
+        for i in 0..11 {
+            let bit = if chunks & (mask << i ) != 0 { 1 } else { 0 };
+            binary_seed.push(bit as u8);
+        }
+    }
+    binary_seed.reverse();
 
-
-    hex_string
+    let mut seed: u128 = 0;
+    for bit in binary_seed {
+        seed = (seed << 1) | u128::from(bit);
+    }
+    seed
 }
 
