@@ -9,17 +9,6 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-function createSecuredSeedPhrase() {
-  // Votre code pour générer une phrase de graine sécurisée va ici
-  // Assurez-vous d'importer ou d'utiliser les bibliothèques nécessaires
-
-  // Exemple de génération de phrase aléatoire (à remplacer par votre logique réelle)
-  const seedPhrase = generateRandomSeedPhrase();
-
-  console.log('Votre phrase de graine sécurisée est :');
-  console.log(seedPhrase);
-}
-
 
 function generateBIP39SeedPhrase() {
     // Génère un tableau d'octets (Buffer) de 16 octets
@@ -60,9 +49,46 @@ function generateBIP39SeedPhrase() {
     // Sélectionne le nombre approprié de mots pour la seed phrase (12 mots)
     const seedPhrase = seedPhraseWords.slice(0, numWords + 1).join(' ');
   
-    console.log('Votre phrase de graine sécurisée est :' + seedPhrase);
+    console.log('Votre phrase de graine sécurisée est : ' + seedPhrase);
   }
 
+  function verifySeedPhrase(seedPhrase) {
+    let isValid = false;
+  
+    // Sépare la seed phrase en mots
+    const words = seedPhrase.split(' ');
+  
+    // Vérifie que la seed phrase contient le nombre correct de mots (12, 15, 18, 21 ou 24)
+    if ([12, 15, 18, 21, 24].indexOf(words.length) === -1) {
+      return isValid;
+    }
+  
+    // Obtient le dernier mot de la seed phrase
+    const lastWord = words[words.length - 1];
+  
+    // Vérifie que le dernier mot est issu de la liste BIP-39
+    if (WORDLIST.indexOf(lastWord) === -1) {
+      return isValid;
+    }
+  
+    // Récupère le checksum binaire du dernier mot
+    const checksumBits = lastWord.slice(-1).charCodeAt(0).toString(2).padStart(4, '0');
+  
+    // Calcul du checksum binaire des mots précédents
+    const calculatedChecksum = crypto.createHash('sha256')
+      .update(words.slice(0, -1).join(' '))
+      .digest()
+      .toString('hex')
+      .slice(0, 1); // Prend le premier caractère hexadécimal (4 bits) du hachage SHA-256
+
+    console.log('Checksum binaire extrait : ' + checksumBits);
+    console.log('Checksum binaire calculé : ' + calculatedChecksum);
+  
+    // Compare le checksum extrait avec le checksum calculé
+    isValid = checksumBits === calculatedChecksum;
+  
+    return { isValid, checksumBits };
+  }
 
 
 
@@ -78,7 +104,17 @@ function menu() {
         generateBIP39SeedPhrase();
         break;
       case '2':
-        // Ajoutez d'autres options ici
+        // wait for seed phrase input
+        rl.question('Entrez votre phrase de graine sécurisée : ', (seedPhrase) => {
+          const isValid = verifySeedPhrase(seedPhrase);
+          if (isValid) {
+            console.log('Votre phrase de graine sécurisée est valide !');
+            rl.close();
+          } else {
+            console.log('Votre phrase de graine sécurisée est invalide !');
+            rl.close();
+          }
+        });
         break;
       case '3':
         rl.close();
