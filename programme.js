@@ -22,39 +22,45 @@ function createSecuredSeedPhrase() {
 
 
 function generateBIP39SeedPhrase() {
-    //random u16 integer
+    // Génère un tableau d'octets (Buffer) de 16 octets
     const randomBytes = crypto.randomBytes(16);
-    console.log('This is the HEX version of the seed : '+ randomBytes.toString('hex'));
-    //convert to binary
-    const binaryString = randomBytes.reduce((acc, byte) => acc + byte.toString(2).padStart(8, '0'), '');
-    console.log('This is the binary version of the seed : '+ binaryString);
-
-    console.log('Bytes in hexadecimal:');
-    for (let i = 0; i < randomBytes.length; i++) {
-      console.log('Byte ' + i + ': ' + randomBytes[i].toString(16).padStart(2, '0'));
-    }
-
+  
+    // Calcule le checksum en utilisant SHA-256
+    const checksum = crypto.createHash('sha256').update(randomBytes).digest();
+  
+    // Obtient les 4 premiers bits du checksum
+    const checksumBits = checksum.readUIntBE(0, 1) >> 4; // Lit le premier octet et décale de 4 bits vers la droite
+  
+    // Convertit la séquence de base en binaire
+    const baseBinary = randomBytes.reduce((acc, byte) => acc + byte.toString(2).padStart(8, '0'), '');
+  
+    // Ajoute les 4 bits du checksum aux 124 bits de la séquence de base
+    const fullBinary = baseBinary + checksumBits.toString(2).padStart(4, '0');
+  
+    // Divise les bits en groupes de 11 bits
     const groupSize = 11;
     const groups = [];
-    for (let i = 0; i < binaryString.length; i += groupSize) {
-      groups.push(binaryString.slice(i, i + groupSize));
+    for (let i = 0; i < fullBinary.length; i += groupSize) {
+      groups.push(fullBinary.slice(i, i + groupSize));
     }
-
-    console.log('Groups of 11 bits:');
+  
+    // Calcul du nombre de mots en fonction du nombre de bits d'entropie
+    const entropyBits = 124; // Utilise 124 bits pour obtenir 12 mots
+    const numWords = entropyBits / 11;
+  
+    // Ajoute les groupes de 11 bits à la seed phrase
+    const seedPhraseWords = [];
     for (let i = 0; i < groups.length; i++) {
-      console.log('Group ' + i + ': ' + groups[i]);
+      const binaryGroup = groups[i];
+      const index = parseInt(binaryGroup, 2); // Convertit la séquence binaire en entier
+      const word = WORDLIST[index];
+      seedPhraseWords.push(word);
     }
-
-    for (let i = 0; i < groups.length; i++) {
-        const binaryGroup = groups[i];
-        const index = parseInt(binaryGroup, 2); // Convertit la séquence binaire en entier
-        const associatedWord = WORDLIST[index];
-        console.log('Group ' + i + ': ' + binaryGroup + ' -> ' + associatedWord);
-      }
-
-
-
-
+  
+    // Sélectionne le nombre approprié de mots pour la seed phrase (12 mots)
+    const seedPhrase = seedPhraseWords.slice(0, numWords + 1).join(' ');
+  
+    console.log('Votre phrase de graine sécurisée est :' + seedPhrase);
   }
 
 
