@@ -92,40 +92,40 @@ function generateBIP39SeedPhrase() {
 
 
 
-function menu() {
-  console.log('Menu :');
-  console.log('1. Créer une phrase de graine sécurisée');
-  console.log('2. Importer votre seed phrase');
-  console.log('3. Quitter');
+  function menu() {
+    console.log('Menu :');
+    console.log('1. Créer une phrase de graine sécurisée');
+    console.log('2. Importer votre seed phrase');
+    console.log('3. Quitter');
+  
+    rl.question('Sélectionnez une option : ', (choice) => {
+      switch (choice) {
+        case '1':
+          generateBIP39SeedPhrase();
+          menu(); // Rappelle le menu après avoir généré la seed phrase
+          break;
+        case '2':
+          // wait for seed phrase input
+          rl.question('Entrez votre phrase de graine sécurisée : ', (seedPhrase) => {
+            const isValid = verifySeedPhrase(seedPhrase);
+            if (isValid) {
+              console.log('Votre phrase de graine sécurisée est valide !');
+            } else {
+              console.log('Votre phrase de graine sécurisée est invalide !');
+            }
+            menu(); // Rappelle le menu après avoir vérifié la seed phrase
+          });
+          break;
+        case '3':
+          rl.close();
+          break;
+        default:
+          console.log('Option invalide. Veuillez sélectionner une option valide.');
+          menu(); // Rappelle le menu en cas de choix invalide
+          break;
+      }
+    });
+  }
 
-  rl.question('Sélectionnez une option : ', (choice) => {
-    switch (choice) {
-      case '1':
-        generateBIP39SeedPhrase();
-        break;
-      case '2':
-        // wait for seed phrase input
-        rl.question('Entrez votre phrase de graine sécurisée : ', (seedPhrase) => {
-          const isValid = verifySeedPhrase(seedPhrase);
-          if (isValid) {
-            console.log('Votre phrase de graine sécurisée est valide !');
-            rl.close();
-          } else {
-            console.log('Votre phrase de graine sécurisée est invalide !');
-            rl.close();
-          }
-        });
-        break;
-      case '3':
-        rl.close();
-        break;
-      default:
-        console.log('Option invalide. Veuillez sélectionner une option valide.');
-        menu();
-        break;
-    }
-  });
-}
-
-// Démarrer le menu
+  
 menu();
